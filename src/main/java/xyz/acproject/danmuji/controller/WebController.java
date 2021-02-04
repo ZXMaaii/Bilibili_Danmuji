@@ -19,7 +19,6 @@ import xyz.acproject.danmuji.conf.PublicDataConf;
 import xyz.acproject.danmuji.entity.login_data.LoginData;
 import xyz.acproject.danmuji.entity.login_data.Qrcode;
 import xyz.acproject.danmuji.http.HttpOtherData;
-import xyz.acproject.danmuji.http.HttpRoomData;
 import xyz.acproject.danmuji.http.HttpUserData;
 import xyz.acproject.danmuji.returnJson.Response;
 import xyz.acproject.danmuji.service.ClientService;
@@ -117,7 +116,7 @@ public class WebController {
 		jsonObject = JSONObject.parseObject(jsonString);
 		if (jsonObject != null) {
 			if (jsonObject.getBoolean("status")) {
-				checkService.init();
+				checkService.init(1);
 				if (PublicDataConf.USER != null) {
 					req.getSession().setAttribute("status", "login");
 				}
@@ -189,6 +188,7 @@ public class WebController {
 		try {
 			CenterSetConf centerSetConf = JSONObject.parseObject(set, CenterSetConf.class);
 			checkService.changeSet(centerSetConf);
+			
 		} catch (Exception e) {
 			// TODO: handle exception
 			return Response.success(false, req);
@@ -198,7 +198,7 @@ public class WebController {
 	@ResponseBody
 	@RequestMapping(value = "/getIp", method = RequestMethod.GET, produces = "application/json;charset=UTF-8")
 	public Response<?> getIp(HttpServletRequest req) {
-		String ip =HttpRoomData.httpGetIp();
+		String ip =HttpOtherData.httpGetIp();
 		if(!StringUtils.isEmpty(ip)) {
 			return Response.success(ip, req);
 		}else {
@@ -223,5 +223,17 @@ public class WebController {
 		}else {
 			return Response.success(2, req);
 		}	
+	}
+	@ResponseBody
+	@RequestMapping(value="/block",method = RequestMethod.GET,produces = "application/json;charset=UTF-8")
+	public Response<?> block(@RequestParam("uid")long uid,@RequestParam("time")short time,HttpServletRequest req){
+		short code = 0;
+		if(time>720&&time<=0) {
+			//required time error
+			code =2;
+			return Response.success(code, req);
+		}
+		code = HttpUserData.httpPostAddBlock(uid, time);
+		return Response.success(code, req);
 	}
 }

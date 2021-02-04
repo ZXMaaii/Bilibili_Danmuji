@@ -2,15 +2,20 @@ package xyz.acproject.danmuji.service.impl;
 
 import java.io.IOException;
 import java.util.Hashtable;
+import java.util.Map;
+import java.util.concurrent.CountDownLatch;
 
 import org.apache.commons.lang3.StringUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.apache.logging.log4j.core.util.ExecutorServices;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import com.alibaba.fastjson.JSONObject;
 
+import xyz.acproject.danmuji.component.ServerAddressComponent;
+import xyz.acproject.danmuji.component.TaskRegisterComponent;
 import xyz.acproject.danmuji.component.ThreadComponent;
 import xyz.acproject.danmuji.conf.CenterSetConf;
 import xyz.acproject.danmuji.conf.PublicDataConf;
@@ -27,6 +32,7 @@ import xyz.acproject.danmuji.service.ClientService;
 import xyz.acproject.danmuji.service.SetService;
 import xyz.acproject.danmuji.tools.BASE64Encoder;
 import xyz.acproject.danmuji.tools.ParseSetStatusTools;
+import xyz.acproject.danmuji.utils.SchedulingRunnableUtil;
 
 /**
  * @ClassName SetServiceImpl
@@ -36,16 +42,21 @@ import xyz.acproject.danmuji.tools.ParseSetStatusTools;
  *
  * @Copyright:2020 blogs.acproject.xyz Inc. All rights reserved.
  */
+@SuppressWarnings("all")
 @Service
-public class SetServiceImpl implements SetService{
+public class SetServiceImpl implements SetService {
 	private Logger LOGGER = LogManager.getLogger(SetServiceImpl.class);
-	private String cookies = "ySZL4SBB";
+	private final String cookies = "ySZL4SBB";
 	@Autowired
 	private ClientService clientService;
 	@Autowired
 	private ThreadComponent threadComponent;
+	@Autowired
+	private ServerAddressComponent serverAddressComponent;
+	@Autowired
+	private TaskRegisterComponent taskRegisterComponent;
 
-	public void init() {
+	public void init(int i) {
 		Hashtable<String, String> hashtable = new Hashtable<String, String>();
 		String cookieString = null;
 		BASE64Encoder base64Encoder = new BASE64Encoder();
@@ -95,17 +106,17 @@ public class SetServiceImpl implements SetService{
 			if (PublicDataConf.ROOMID_SAFE != null && PublicDataConf.ROOMID_SAFE > 0)
 				PublicDataConf.centerSetConf.setRoomid(PublicDataConf.ROOMID_SAFE);
 		}
-		if(PublicDataConf.centerSetConf.getAdvert()==null) {
+		if (PublicDataConf.centerSetConf.getAdvert() == null) {
 			PublicDataConf.centerSetConf.setAdvert(new AdvertSetConf());
 		}
-		if(PublicDataConf.centerSetConf.getFollow()==null) {
+		if (PublicDataConf.centerSetConf.getFollow() == null) {
 			PublicDataConf.centerSetConf.setFollow(new ThankFollowSetConf());
 		}
-		if(PublicDataConf.centerSetConf.getThank_gift()==null) {
+		if (PublicDataConf.centerSetConf.getThank_gift() == null) {
 			PublicDataConf.centerSetConf.setThank_gift(new ThankGiftSetConf());
 		}
-		if(PublicDataConf.centerSetConf.getReply()==null) {
-			PublicDataConf.centerSetConf.setReply(new AutoReplySetConf());;
+		if (PublicDataConf.centerSetConf.getReply() == null) {
+			PublicDataConf.centerSetConf.setReply(new AutoReplySetConf());
 		}
 		hashtable.put("set", base64Encoder.encode(PublicDataConf.centerSetConf.toJson().getBytes()));
 		ProFileTools.write(hashtable, "DanmujiProfile");
@@ -117,7 +128,7 @@ public class SetServiceImpl implements SetService{
 			// TODO: handle exception
 			LOGGER.error("读取配置文件失败" + e);
 		}
-		//分离cookie
+		// 分离cookie
 		if (!StringUtils.isEmpty(PublicDataConf.USERCOOKIE) && PublicDataConf.COOKIE == null) {
 			String key = null;
 			String value = null;
@@ -127,25 +138,27 @@ public class SetServiceImpl implements SetService{
 			cookie = cookie.trim();
 			String[] a = cookie.split(";");
 			for (String string : a) {
-				key = string.split("=")[0];
-				value = string.split("=")[1];
-				if (key.equals("DedeUserID")) {
-					PublicDataConf.COOKIE.setDedeUserID(value);
-					controlNum++;
-				} else if (key.equals("bili_jct")) {
-					PublicDataConf.COOKIE.setBili_jct(value);
-					controlNum++;
-				} else if (key.equals("DedeUserID__ckMd5")) {
-					PublicDataConf.COOKIE.setDedeUserID__ckMd5(value);
-					controlNum++;
-				} else if (key.equals("sid")) {
-					PublicDataConf.COOKIE.setSid(value);
-					controlNum++;
-				} else if (key.equals("SESSDATA")) {
-					PublicDataConf.COOKIE.setSESSDATA(value);
-					controlNum++;
-				} else {
-					LOGGER.debug("获取cookie失败，字段为" + key);
+				if (string.contains("=")) {
+					key = string.split("=")[0];
+					value = string.split("=")[1];
+					if (key.equals("DedeUserID")) {
+						PublicDataConf.COOKIE.setDedeUserID(value);
+						controlNum++;
+					} else if (key.equals("bili_jct")) {
+						PublicDataConf.COOKIE.setBili_jct(value);
+						controlNum++;
+					} else if (key.equals("DedeUserID__ckMd5")) {
+						PublicDataConf.COOKIE.setDedeUserID__ckMd5(value);
+						controlNum++;
+					} else if (key.equals("sid")) {
+						PublicDataConf.COOKIE.setSid(value);
+						controlNum++;
+					} else if (key.equals("SESSDATA")) {
+						PublicDataConf.COOKIE.setSESSDATA(value);
+						controlNum++;
+					} else {
+//						LOGGER.debug("获取cookie失败，字段为" + key);
+					}
 				}
 			}
 			if (controlNum == 5) {
@@ -159,41 +172,53 @@ public class SetServiceImpl implements SetService{
 				holdSet(PublicDataConf.centerSetConf);
 			}
 		}
-		// 公告和检查更新
-		System.out.println();
-		System.out.println();
-		System.out.println("最新公告："+HttpOtherData.httpGetNewAnnounce());
-		String edition=HttpOtherData.httpGetNewEdition();
-		if(!StringUtils.isEmpty(edition)) {
-			if(!edition.equals(PublicDataConf.EDITION)) {
-				System.out.println("查询最新版本："+edition+"目前脚本有可用更新哦，请到github官网查看更新https://github.com/BanqiJane/Bilibili_Danmuji");
-			}else {
-				System.out.println("查询最新版本：目前使用的版本为最新版本，暂无可用更新");
+		if (i == 0) {
+			// 公告和检查更新
+			System.out.println();
+			System.out.println();
+			System.out.println(
+					"参考本地浏览器进入设置页面地址: 1、http://127.0.0.1:" + serverAddressComponent.getPort() + ";2、http://localhost:"
+							+ serverAddressComponent.getPort() + ";3、" + serverAddressComponent.getAddress());
+			System.out.println("参考局域网浏览器进入设置页面地址: 1、" + serverAddressComponent.getAddress());
+			System.out.println("参考远程(无代理)浏览器进入设置页面地址: 1、" + serverAddressComponent.getRemoteAddress());
+			System.out.println();
+			System.out.println("最新公告：" + HttpOtherData.httpGetNewAnnounce());
+			String edition = HttpOtherData.httpGetNewEdition();
+			if (!StringUtils.isEmpty(edition)) {
+				if (!edition.equals(PublicDataConf.EDITION)) {
+					System.out.println("查询最新版本：" + edition
+							+ "目前脚本有可用更新哦，请到github官网查看更新https://github.com/BanqiJane/Bilibili_Danmuji");
+				} else {
+					System.out.println("查询最新版本：目前使用的版本为最新版本，暂无可用更新");
+				}
+			} else {
+				System.out.println("查询最新版本失败,打印目前版本：" + PublicDataConf.EDITION);
 			}
-		}else {
-			System.out.println("查询最新版本失败,打印目前版本："+PublicDataConf.EDITION);
-		}
-		System.out.println();
-		// 自动连接
-		if (PublicDataConf.centerSetConf.isIs_auto() && PublicDataConf.centerSetConf.getRoomid() > 0) {
+			System.out.println();
+			// 自动连接
+			if (PublicDataConf.centerSetConf.isIs_auto() && PublicDataConf.centerSetConf.getRoomid() > 0) {
+				try {
+					clientService.startConnService(PublicDataConf.centerSetConf.getRoomid());
+				} catch (Exception e) {
+					// TODO 自动生成的 catch 块
+					e.printStackTrace();
+				}
+			}
+			// window用默认浏览器打开网页
 			try {
-				clientService.startConnService(PublicDataConf.centerSetConf.getRoomid());
-			} catch (Exception e) {
-				// TODO 自动生成的 catch 块
-				e.printStackTrace();
+				Runtime.getRuntime()
+						.exec("rundll32 url.dll,FileProtocolHandler " + serverAddressComponent.getAddress());
+			} catch (IOException e) {
+				// TODO Auto-generated catch block
+				System.out.println(
+						"自动打开浏览器错误:当前系统缺少rundll32 url.dll组件或者不是window系统，无法自动启动默认浏览器打开配置页面，请手动打开浏览器地址栏输入http://127.0.0.1:23333进行配置");
 			}
-		}
-		// window用默认浏览器打开网页
-		try {
-			Runtime.getRuntime().exec("rundll32 url.dll,FileProtocolHandler http://127.0.0.1:23333");
-		} catch (IOException e) {
-			// TODO Auto-generated catch block
-			System.out.println("自动打开浏览器错误:当前系统缺少rundll32 url.dll组件或者不是window系统，无法自动启动默认浏览器打开配置页面，请手动打开浏览器地址栏输入http://127.0.0.1:23333进行配置");
 		}
 		base64Encoder = null;
 		hashtable.clear();
 	}
-	//保存配置文件
+
+	// 保存配置文件
 	public void changeSet(CenterSetConf centerSetConf) {
 		if (centerSetConf.toJson().equals(PublicDataConf.centerSetConf.toJson())) {
 			LOGGER.debug("保存配置文件成功");
@@ -248,25 +273,44 @@ public class SetServiceImpl implements SetService{
 		base64Encoder = null;
 		hashtable.clear();
 	}
-	
+
+
 	/**
 	 * 保存配置并执行
 	 *
 	 */
 	public void holdSet(CenterSetConf centerSetConf) {
+		if (PublicDataConf.centerSetConf.isIs_dosign()) {
+			if (!StringUtils.isEmpty(PublicDataConf.USERCOOKIE)) {
+				if(!PublicDataConf.is_sign) {
+				HttpUserData.httpGetDoSign();
+				SchedulingRunnableUtil task = new SchedulingRunnableUtil("dosignTask", "dosign",null);
+				taskRegisterComponent.addTask(task, "0 30 0 * * ?");
+				PublicDataConf.is_sign = true;
+				}
+			}
+		}else {
+			try {
+				taskRegisterComponent.destroy();
+			} catch (Exception e) {
+				// TODO 自动生成的 catch 块
+				LOGGER.error("清理定时任务错误："+e);
+			}
+		}
 		if (PublicDataConf.ROOMID == null) {
 			return;
 		}
 		if (PublicDataConf.webSocketProxy == null) {
 			return;
 		}
-		if(PublicDataConf.webSocketProxy!=null&&!PublicDataConf.webSocketProxy.isOpen()) {
+		if (PublicDataConf.webSocketProxy != null && !PublicDataConf.webSocketProxy.isOpen()) {
 			return;
 		}
-		//parsemessagethread start
-		threadComponent.startParseMessageThread(ParseSetStatusTools.getMessageConcurrentHashMap(centerSetConf, PublicDataConf.lIVE_STATUS),
+		// parsemessagethread start
+		threadComponent.startParseMessageThread(
+				ParseSetStatusTools.getMessageConcurrentHashMap(centerSetConf, PublicDataConf.lIVE_STATUS),
 				centerSetConf);
-		//logthread
+		// logthread
 		if (centerSetConf.isIs_log()) {
 			threadComponent.startLogThread();
 		} else {
@@ -274,7 +318,7 @@ public class SetServiceImpl implements SetService{
 		}
 		// need login
 		if (!StringUtils.isEmpty(PublicDataConf.USERCOOKIE)) {
-			//advertthread
+			// advertthread
 			if (centerSetConf.getAdvert().isIs_live_open()) {
 				if (PublicDataConf.lIVE_STATUS != 1) {
 					threadComponent.closeAdvertThread();
@@ -294,42 +338,53 @@ public class SetServiceImpl implements SetService{
 					threadComponent.closeAdvertThread();
 				}
 			}
-			//autoreplythread
-			if(centerSetConf.getReply().isIs_live_open()) {
-				if(PublicDataConf.lIVE_STATUS!=1) {
+			// autoreplythread
+			if (centerSetConf.getReply().isIs_live_open()) {
+				if (PublicDataConf.lIVE_STATUS != 1) {
 					threadComponent.closeAutoReplyThread();
-				}else {
-					if(centerSetConf.getReply().isIs_open()) {
+				} else {
+					if (centerSetConf.getReply().isIs_open()) {
 						threadComponent.startAutoReplyThread(centerSetConf);
-					}else {
+					} else {
 						threadComponent.setAutoReplyThread(centerSetConf);
 						threadComponent.closeAutoReplyThread();
 					}
 				}
-			}else {
-				if(centerSetConf.getReply().isIs_open()) {
+			} else {
+				if (centerSetConf.getReply().isIs_open()) {
 					threadComponent.startAutoReplyThread(centerSetConf);
-				}else {
+				} else {
 					threadComponent.setAutoReplyThread(centerSetConf);
 					threadComponent.closeAutoReplyThread();
 				}
 			}
-			//useronlinethread
+			// useronlinethread && smallHeartThread
 			if (centerSetConf.isIs_online()) {
 				threadComponent.startUserOnlineThread();
+				if (centerSetConf.isIs_sh()&&PublicDataConf.lIVE_STATUS==1) {
+					threadComponent.startSmallHeartThread();
+				} else {
+					threadComponent.closeSmallHeartThread();
+				}
 			} else {
+				threadComponent.closeSmallHeartThread();
 				threadComponent.closeUserOnlineThread();
 			}
-			
-			//sendbarragethread
-			if (PublicDataConf.advertThread == null && !PublicDataConf.parseMessageThread.getMessageControlMap().get(ShieldMessage.is_followThank)
-					&& !PublicDataConf.parseMessageThread.getMessageControlMap().get(ShieldMessage.is_giftThank)&&PublicDataConf.autoReplyThread==null) {
+			// sendbarragethread
+			if (PublicDataConf.advertThread == null
+					&& !PublicDataConf.parseMessageThread.getMessageControlMap().get(ShieldMessage.is_followThank)
+					&& !PublicDataConf.parseMessageThread.getMessageControlMap().get(ShieldMessage.is_giftThank)
+					&& PublicDataConf.autoReplyThread == null) {
 				threadComponent.closeSendBarrageThread();
+				PublicDataConf.replys.clear();
+				PublicDataConf.thankGiftConcurrentHashMap.clear();
+				PublicDataConf.barrageString.clear();
+				PublicDataConf.interacts.clear();
 			} else {
 				threadComponent.startSendBarrageThread();
 			}
 		} else {
-		
+
 			PublicDataConf.COOKIE = null;
 			PublicDataConf.USER = null;
 			PublicDataConf.USERCOOKIE = null;
@@ -339,8 +394,9 @@ public class SetServiceImpl implements SetService{
 			threadComponent.closeGiftShieldThread();
 			threadComponent.closeSendBarrageThread();
 			threadComponent.closeFollowShieldThread();
+			threadComponent.closeSmallHeartThread();
 		}
-		if(PublicDataConf.webSocketProxy!=null&&!PublicDataConf.webSocketProxy.isOpen()) {
+		if (PublicDataConf.webSocketProxy != null && !PublicDataConf.webSocketProxy.isOpen()) {
 			threadComponent.closeHeartByteThread();
 			threadComponent.closeParseMessageThread();
 			threadComponent.closeUserOnlineThread();
@@ -350,6 +406,7 @@ public class SetServiceImpl implements SetService{
 			threadComponent.closeLogThread();
 			threadComponent.closeGiftShieldThread();
 			threadComponent.closeAutoReplyThread();
+			threadComponent.closeSmallHeartThread();
 			PublicDataConf.SHIELDGIFTNAME = null;
 			PublicDataConf.replys.clear();
 			PublicDataConf.resultStrs.clear();
@@ -371,6 +428,14 @@ public class SetServiceImpl implements SetService{
 		threadComponent.closeFollowShieldThread();
 		threadComponent.closeAutoReplyThread();
 		threadComponent.closeSendBarrageThread();
+		threadComponent.closeSmallHeartThread();
+		// remove task all shutdown !!!!!!
+		try {
+			taskRegisterComponent.destroy();
+		} catch (Exception e) {
+			// TODO 自动生成的 catch 块
+			LOGGER.error("清理定时任务错误："+e);
+		}
 		PublicDataConf.replys.clear();
 		PublicDataConf.thankGiftConcurrentHashMap.clear();
 		PublicDataConf.barrageString.clear();

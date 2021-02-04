@@ -5,8 +5,10 @@ import org.springframework.boot.CommandLineRunner;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.context.annotation.Bean;
+import org.springframework.scheduling.annotation.EnableScheduling;
 import org.springframework.web.socket.server.standard.ServerEndpointExporter;
 
+import xyz.acproject.danmuji.http.HttpUserData;
 import xyz.acproject.danmuji.service.impl.SetServiceImpl;
 
 /**
@@ -17,6 +19,7 @@ import xyz.acproject.danmuji.service.impl.SetServiceImpl;
  *
  * @Copyright:2020 blogs.acproject.xyz Inc. All rights reserved.
  */
+@EnableScheduling
 @SpringBootApplication
 public class BiliBiliDanmujiApplication implements CommandLineRunner{
 	@Autowired
@@ -29,7 +32,7 @@ public class BiliBiliDanmujiApplication implements CommandLineRunner{
 	@Override
 	public void run(String... args) throws Exception {
 		// TODO 自动生成的方法存根
-		checkService.init();
+		checkService.init(0);
 	}
 	
 	@Bean

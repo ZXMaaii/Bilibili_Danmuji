@@ -1,11 +1,13 @@
+# 特别注意：
+# 2.4版本更换了检查更新服务器和小心心服务器 2.4版本以后的服务器将弃用 注意更新
+
+
 # 运行环境
 **可在所有主要操作系统上运行，并且仅需要安装Java JDK或JRE版本8或更高版本。要检查，请运行java -version：**
 ```bash
 $ java -version
 java version "1.8.0_121"
 ```
-
-**！！！：1.0.3+版本增加window64绿色版本，再也不用配置安装java环境了**<br/><br/><br/>
 **Bootstrap4 放弃了对 IE8 以及 iOS 6 的支持，现在仅仅支持 IE9 以上 以及 iOS 7 以上版本的浏览器。**<br/>
 **以最新版本浏览器示例:**
 <table>
@@ -51,12 +53,18 @@ java version "1.8.0_121"
     </tbody>
 </table>
 
+
+# 版本2.4.1
+- **danmuji(常规版本 需要java环境) [地址](https://github.com/BanqiJane/Bilibili_Danmuji/releases/tag/2.4.1 "下载地址")**<br/><br/>
+- **danmuji-green(window64绿色版本，不用配置安装java环境) [地址](https://github.com/BanqiJane/Bilibili_Danmuji/releases/tag/2.4.1 "下载地址")**<br/><br/>
+- **danmuji-docker(docker版本,由B站用户[西凉君君](https://live.bilibili.com/101937 "B站主页地址")提供 在此感谢) [地址](https://registry.hub.docker.com/r/xilianghe/danmuji "下载地址")**<br/><br/>
+
 # 简介
 
 **Bilibili Live Barrage Kyi in Springboot,基于Springboot的Bilibili直播弹幕姬(使用websocket协议)，java版B站弹幕姬.**<br/>
 **本软件基于控制台 项目控制台运行，弹幕在控制台显示(也可以在网页查看弹幕).**<br/>
 **本软件基于web设置 必须在浏览器上设置.**<br/>
-**关于绿色版本：使用为开源的openjdk8。[官网](https://jdk.java.net/java-se-ri/8-MR3 "官网")**
+**关于绿色版本：使用为开源的openjdk8。1.[官网](https://jdk.java.net/java-se-ri/8-MR3 "官网") 2.[红帽安装版官网](https://developers.redhat.com/products/openjdk/download?sc_cid=701f2000000RWTnAAO "红帽openjdk")**
 
 ## 现有功能
 - **弹幕显示**
@@ -81,11 +89,13 @@ java version "1.8.0_121"
 7. 触发直播间有人上舰长后发送私信(用于发送舰长群)
 8. 感谢舰队和留言
 9. 可选择是否输出礼物数量
+10. 可设置多条感谢弹幕模板
 - **关注实时感谢(1.0.6+变为真正的实时感谢)**
 1. 是否仅在直播中开启
 2. 可调节每次感谢人数
 3. 可屏蔽天选时刻下的关注
 4. **延迟感谢(可统计延时内关注,一旦延时内有新关注就会重新刷新延时)！**
+5. 可设置多条感谢弹幕模板
 - **定时发送弹幕(用于发送广告)**
 1. 是否仅在直播中开启
 2. 可调节时间
@@ -99,11 +109,24 @@ java version "1.8.0_121"
 1. 是否仅在直播中开启
 2. 可调节多少秒间隔才能识别弹幕并自动回复
 3. 可设置多个关键字与屏蔽词
-4. 回复语提供%NAME%参数表示提问的人 %FANS% 实时获取关注数
-5. 含关键字封禁功能 提供%BLOCK%参数表示当前是一个封禁功能 和{{time}}参数表示封禁的时长单位小时 如果超过720或低于1 则默认为1小时 不设置也默认为1小时
+4. 回复语提供%NAME%参数表示提问的人 %FANS% 实时获取关注数 %LIVETIME% 当前直播时间 %HOT% 当前人气值 %TIME% 打印北京时间 %WEATHER% 以打印推荐天气
+5. 含关键字封禁功能 提供%BLOCK%参数表示当前是一个封禁功能 和{{time}}参数表示封禁的时长单位小时 如果超过720或低于1 则默认为1小时 不设置也默认为1小时 如果有弹幕在里面 禁言成功则发送弹幕,失败则不发送;
+6. 可设置精确匹配
+7. 关键字可有满足条件A或条件B 发送内容C的功能(该功能多关键字也能用)
+8. 天气接口：固定参数 提问弹幕里面必须为@或#号开头 "天气"结尾  中间为城市和时间结合体(时间取数为：昨天，明天，后天，后两天，后三天) 
+例如 #广州天气 或者 @广州天气 或者 #广州后天天气 或者 #广州昨天天气 ;推荐关键字配置为 （ #||@，天气 ）
+推荐配置参数为%WEATHER%  高级配置参数有 %W_CITY% 城市名称 %W_DATE% 时间 %WENDU% 温度(仅当天有效) %L_WENDU% 最低温度 %H_WENDU% 最高温度 %W_FX%  风向 %W_TYPE% 天气类型 %W_FL% 风力
+%W_TIPS% 感冒小提示
+- **网页高级弹幕显示**
+1. 可以手动禁言
+2. 可以查看用户个人空间
 - **关键字禁言(内嵌于自动回复姬里)**
 - **模拟在线(老爷可增加在线经验)**
 - **断线自动重连(实验性)**
+- **在线小心心(实验性)**
+- **直播自动签到(实验性)**
+- **弹幕姬所发出的任意弹幕 都可以完成首日+100亲密度任务**
+
 <br/><br/>
 # 如何运行<br/>
 ### 发布版本(环境配置好的前提下）<br/>
@@ -153,17 +176,60 @@ $ java -jar BiliBili_Danmuji-2.0beta.jar
 ## 项目线上实战展示<br/><br/>
 ## [破站-Elysian绿豆直播间](https://live.bilibili.com/26445 "破站ELysian绿豆直播间-豆子哥")(用户名:Elysian绿豆)<br/><br/>
 ## [破站-坂本叔直播间](https://live.bilibili.com/1000 "破站坂本叔直播间") (用户名:坂崎简)<br/><br/>
+## [破站-西凉君君直播间](https://live.bilibili.com/101937 "破站西凉君君直播间") (用户名:西凉君君)<br/><br/>
 **本项目已在坂本叔直播间经过2年多的风吹雨打 最近才想起来开源,请放心使用**<br/>
 **如果您使用了本软件，最好能在破站私聊我吱一下呢**
+
+
+# **我的另一个弹幕姬项目**
+**[BiliLiveChat](https://github.com/BanqiJane/BiliLiveChat "BiliLiveChat")**
+
+
 # 版本更新<br/>
 **版本更新直接删除旧版本jar包 把新版本jar包复制进去就行 run.bat同样**
 # 版本详细<br/>
+
+<blockquote>
+ <blockquote>
+<h2>Beta2.4.1</h2>
+<p>检查发现2.3.1以后版本的更新代码被覆盖掉了 导致回滚 该版本尝试恢复</p>
+</blockquote>
+ <blockquote>
+<h2>Beta2.4</h2>
+<p>更换了弹幕姬检查更新服务器和小心心服务器</p>
+</blockquote>
+ <blockquote>
+<h2>Beta2.3.2</h2>
+<p>优化小心心逻辑</p>
+<p>修复自动签到</p>
+<p>修复私信接口</p>
+</blockquote>
+<blockquote>
+<h2>Beta2.3.1</h2>
+<p>修复了小心心bug</p>
+</blockquote>
+<blockquote>
+<h2>Beta2.3</h2>
+<p>修复了若干bug(maybe make more bug)</p>
+<p>优化弹幕保存本地,修复断线重连机制<p/>
+<p>美化网页弹幕显示，并添加查看 禁言功能<p/>
+<p>增加自动签到功能和在线获取小心心功能<p/>
+<p>自动回复姬添加天气接口<p/>
+</blockquote>
+<blockquote>
+<h2>Beta2.2</h2>
+<p>修复了若干bug(maybe make more bug)</p>
+<p>优化请求破站速度,优化感谢礼物关注姬,优化自动回复姬,<p/>
+<p>增加启动cmd窗口打印参考进入设置页面地址<p/>
+<p>增加是否信息输出cmd控制台的选项(这样就不会在不使用cmd看弹幕情况下打印弹幕 无端消耗资源了)<p/>
+<p>感谢礼物关注姬增加可设置多条感谢模板弹幕,既在多条感谢模板弹幕情况下随机发送一条感谢模板弹幕<p/>
+<p>自动回复姬增加若干参数,自动回复姬增加精确匹配功能(仅在在只有一个关键字且没有屏蔽词的情况下使用),自动回复姬增加满足条件A或条件B 发送内容C的功能<p/>
+<p><p/>
+</blockquote>
 <blockquote>
 <h2>Beta2.1</h2>
 <p>修复了若干bug(maybe make more bug)</p>
 <p>把连接网页弹幕显示变为手动连接<p/>
-<p>已知bug：</p>
-<p>自动回复姬设置为禁言时 如果除了两禁言参数外带其他字符会使自动回复姬失效</p>
 </blockquote>
 <blockquote>
 <h2>Beta2.0</h2>
@@ -175,6 +241,7 @@ $ java -jar BiliBili_Danmuji-2.0beta.jar
 <p>分离弹幕图标舰队老爷的显示</p>
 <p>已知bug：</p>
 <p>1.0.6~1.0.7版本出现，感谢关注姬人数调节参数不可用 与感谢礼物姬的人数重合了修改感谢礼物姬参数即可修改它，2.0fix</p>
+<p>自动回复姬设置为禁言时 如果除了两禁言参数外带其他字符会使自动回复姬失效</p>
 </blockquote>
 <blockquote>
 <h2>Beta1.0.7</h2>
